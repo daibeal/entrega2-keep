@@ -171,73 +171,100 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 });
-const ancho = 800
-const alto = 600
-const margen = {
-    superior : 10,
-    inferior : 40,
-    izquierdo : 60,
-    derecho : 40
+// CHART START
+const height = 500
+const width = 800
+const margin = {
+    top: 10,
+    bottom: 40,
+    left:60,
+    right:10
 }
+// svg
+const svg = d3.select("#chart").append("svg").attr("height", height).attr("width", width)
 
-const svg = d3.select("#chart").append("svg")
-    .attr("width", ancho)
-    .attr("height", alto)
-    .attr("id", "svg")
-const grupoElementos = svg.append("g").attr("class", "grupoElementos")
-    .attr("transform", `translate(${margen.izquierdo},${margen.superior})`)
-// escalas y ejes
-var x = d3.scaleBand().range([0, ancho - margen.izquierdo - margen.derecho])
-   .padding(0.1)
-var y = d3.scaleLinear().range([alto - margen.inferior - margen.superior, 0])
+// grupos
+const elementGroup = svg.append("g").attr("id", "elementGroup").attr("transform", `translate(${margin.left}, ${margin.top})`)
+const AxisGroup = svg.append("g").attr("id", "AxisGroup")
+
+// ejes dentro de grupo de ejes
+const xAxisGroup = AxisGroup.append("g").attr("transform", `translate(${margin.left}, ${height -margin.bottom })`)
+const yAxisGroup = AxisGroup.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`)
+
+// escalas
+const x = d3.scaleLinear().range([0, width -margin.left -margin.right])
+const y = d3.scaleBand().range([height -margin.top -margin.bottom, 0])
+
+// ejes
+const xAxis = d3.axisBottom().scale(x)
+const yAxis = d3.axisLeft().scale(y)
+
+
+
+
+d3.csv("datos.csv").then(data => {
+// filtrado
+    dataFilt = data.filter(entry => entry.winner != "");
     
-const grupoEjes = svg.append("g").attr("id", "grupoEjes")
-const grupoX = grupoEjes.append("g").attr("id", "grupoX")
-    .attr("transform", `translate(${margen.izquierdo},${alto-margen.inferior})`)
-const grupoY = grupoEjes.append("g").attr("id", "grupoY")
-    .attr("transform", `translate(${margen.izquierdo},${margen.superior})`)
+    // anidar por país
+    dataNested = d3.nest()
+        .key(entry => entry.winner)
+        .entries(dataFilt)
+    
+    // dominio
+    x.domain([0, d3.max(dataNested.map(entry => entry.values.length))])
+    y.domain(dataNested.map(entry => entry.key)).padding(0.1)
 
-const ejeX = d3.axisBottom().scale(x)
-const ejeY = d3.axisLeft().scale(y) 
+    let maxCopas = d3.max(dataNested.map(entry => entry.values.length))
+    let minCopas = d3.min(dataNested.map(entry => entry.values.length))
 
-var tooltip2 = d3.select("#chart")
-    .append("div")
-    .attr("id", "tooltip")
-    .style("position", "absolute")
-    .style("visibility", "hidden")
-    .style("background-color", "white")
-    .style("border", "solid")
-    .style("border-width", "2px")
-    .style("border-radius", "5px")
-    .style("padding", "10px")
-    .text("TOOLTIP");
+    // ejes
+    xAxisGroup.call(xAxis)
+    yAxisGroup.call(yAxis)
 
-    var g = svg.append("g")
-    .attr("transform", "translate(" + 100 + "," + 100 + ")");
+    // data binding
+    elementGroup.selectAll("rect").data(dataNested)
+        .join("rect")
+        .attr("class", entry => entry.key)
+        .attr("class", entry => entry.values.length == maxCopas ? "winner" :
+            entry.values.length == minCopas ? "loser" : "other")
+        .attr("x", 0)
+        .attr("y", entry => y(entry.key))
+        .attr("width", entry => x(entry.values.length))
+        .attr("height", entry => y.bandwidth(entry.key))
+})
 
-d3.csv("datos.csv", function(error, data) {
-if (error) {
- throw error;
+
+// CHART END
+
+
+
+
+
+// slider:
+function slider() {    
+    var sliderTime = d3
+        .sliderBottom()
+        .min(d3.min(years))  // rango años
+        .max(d3.max(years))
+        .step(4)  // cada cuánto aumenta el slider
+        .width(580)  // ancho de nuestro slider
+        .ticks(years.length)  
+        .default(years[years.length -1])  // punto inicio de la marca
+        .on('onchange', val => {
+            console.log("La función aún no está conectada con la gráfica")
+            // conectar con la gráfica aquí
+        });
+
+        var gTime = d3
+        .select('div#slider-time')  // div donde lo insertamos
+        .append('svg')
+        .attr('width', width * 0.8)
+        .attr('height', 100)
+        .append('g')
+        .attr('transform', 'translate(30,30)');
+
+        gTime.call(sliderTime);
+
+        d3.select('p#value-time').text(sliderTime.value());
 }
-
-ejeX.domain(data.map(function(d) { return d.year; }));
-ejeY.domain([0, d3.max(data, function(d) { return d.winner; })]);
-
-g.append("g")
-.attr("transform", "translate(0," + height + ")")
-.call(d3.axisBottom(xScale));
-
-g.append("g")
-.call(d3.axisLeft(yScale).tickFormat(function(d){
-  return "$" + d;
-}).ticks(10));
-
-g.selectAll(".bar")
-.data(data)
-.enter().append("rect")
-.attr("class", "bar")
-.attr("x", function(d) { return xScale(d.year); })
-.attr("y", function(d) { return yScale(d.winner); })
-.attr("width", xScale.bandwidth())
-.attr("height", function(d) { return height - yScale(d.value); });
-});

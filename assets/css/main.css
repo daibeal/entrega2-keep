@@ -15,7 +15,17 @@
   --font-primary: "Inter", sans-serif;
   --font-secondary: "Cardo", sans-serif;
 }
+.winner {
+  fill:rgb(3, 108, 3);
+}
 
+.loser {
+  fill: rgb(153, 2, 2)
+}
+
+.other {
+  fill: rgb(110, 97, 97);
+}
 /* Colors */
 :root {
   --color-default: #fafafa;
